@@ -15,8 +15,13 @@ classifiers = [
 ]
 dependencies = [
     "mcp[cli]>=1.0",
-    "tenax-tn>=0.1.0",
 ]
+
+[tool.uv.sources]
+tenax-tn = { path = "../tenax", editable = true }
+
+[dependency-groups]
+dev = ["tenax-tn", "pytest>=8.0"]
 
 [project.scripts]
 tenax-mcp = "tenax_mcp.server:main"
