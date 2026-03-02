@@ -14,7 +14,7 @@ Build Hamiltonians, run DMRG/TRG, optimize contraction orders, generate code, an
 | `run_trg` | Run TRG on 2D classical models (Ising) |
 | `optimize_contraction` | Find optimal contraction path and FLOP cost |
 | `validate_network` | Check tensor network validity (dimensions, charges) |
-| `generate_code` | Generate runnable Tenax Python code from descriptions |
+| `generate_code` | Generate runnable Tenax Python code (DMRG, TRG, iDMRG, iPEPS, iPEPS 2-site, split-CTMRG) |
 | `export_netfile` | Convert network description to `.net` file format |
 
 ## Setup
@@ -63,6 +63,9 @@ Once configured, ask Claude:
 - "What's the free energy of the 2D Ising model at T = 2.27?"
 - "Find the optimal contraction order for this tensor network"
 - "Generate code for an iPEPS calculation on the 2D Heisenberg model"
+- "Generate 2-site iPEPS code for the Heisenberg antiferromagnet"
+- "Generate iPEPS code with QR projectors for faster CTM convergence"
+- "Generate split-CTMRG code for the 2D Heisenberg model"
 - "Validate this tensor network for dimension consistency"
 - "Show me the spin-1/2 operators"
 

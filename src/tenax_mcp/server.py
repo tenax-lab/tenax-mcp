@@ -187,12 +187,17 @@ def generate_code(
     hz: float = 0.0,
     D: int = 2,
     chi: int = 20,
+    unit_cell: str = "1x1",
+    projector_method: str = "eigh",
+    qr_warmup_steps: int = 3,
+    chi_I: int | None = None,
+    su_init: bool = False,
 ) -> dict:
     """Generate complete, runnable Tenax Python code from a high-level description.
 
     Args:
         description: What the code should do (e.g., "Heisenberg chain DMRG").
-        algorithm: One of "dmrg", "trg", "idmrg", "ipeps".
+        algorithm: One of "dmrg", "trg", "idmrg", "ipeps", "ipeps_2site", "ipeps_split".
         L: Number of sites (for DMRG).
         d: Local Hilbert space dimension.
         max_bond_dim: Bond dimension.
@@ -204,6 +209,11 @@ def generate_code(
         hz: External field.
         D: iPEPS bond dimension.
         chi: CTM environment bond dimension.
+        unit_cell: iPEPS unit cell — "1x1" (default) or "2site" (checkerboard).
+        projector_method: CTM projector method — "eigh" (default) or "qr" (faster).
+        qr_warmup_steps: Number of eigh warm-up iterations before QR kicks in (default 3).
+        chi_I: Interlayer bond dimension for split-CTMRG (None => chi * D).
+        su_init: Initialize AD optimization with simple update (default False).
 
     Returns:
         Complete Python code string ready to run.
@@ -224,6 +234,12 @@ def generate_code(
         hz=hz,
         D=D,
         chi=chi,
+        lr=1e-3,
+        unit_cell=unit_cell,
+        projector_method=projector_method,
+        qr_warmup_steps=qr_warmup_steps,
+        chi_I=chi_I,
+        su_init=su_init,
     )
 
 

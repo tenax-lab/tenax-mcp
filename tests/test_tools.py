@@ -138,6 +138,40 @@ def test_generate_code_ipeps():
     assert "optimize_gs_ad" in result["code"]
 
 
+def test_generate_code_ipeps_qr():
+    result = generate_code("2D Heisenberg", algorithm="ipeps", projector_method="qr")
+    assert "code" in result
+    assert 'projector_method="qr"' in result["code"]
+    assert "qr_warmup_steps" in result["code"]
+
+
+def test_generate_code_ipeps_2site():
+    result = generate_code("2D Heisenberg AFM", algorithm="ipeps_2site")
+    assert "code" in result
+    assert 'unit_cell="2site"' in result["code"]
+    assert "A_opt, B_opt" in result["code"]
+
+
+def test_generate_code_ipeps_unit_cell_2site():
+    result = generate_code("2D Heisenberg AFM", algorithm="ipeps", unit_cell="2site")
+    assert "code" in result
+    assert 'unit_cell="2site"' in result["code"]
+
+
+def test_generate_code_ipeps_split():
+    result = generate_code("2D Heisenberg", algorithm="ipeps_split")
+    assert "code" in result
+    assert "ctm_split" in result["code"]
+    assert "compute_energy_split_ctm" in result["code"]
+    assert "chi_I" in result["code"]
+
+
+def test_generate_code_ipeps_su_init():
+    result = generate_code("2D Heisenberg", algorithm="ipeps", su_init=True)
+    assert "code" in result
+    assert "su_init=True" in result["code"]
+
+
 def test_generate_code_invalid():
     result = generate_code("something", algorithm="unknown")
     assert "error" in result
