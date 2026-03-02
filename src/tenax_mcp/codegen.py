@@ -83,15 +83,70 @@ import tenax
 # iPEPS configuration
 config = tenax.iPEPSConfig(
     max_bond_dim={D},
-    ctm=tenax.CTMConfig(chi={chi}),
+    ctm=tenax.CTMConfig(chi={chi}{ctm_extra}),
     gs_optimizer="adam",
     gs_learning_rate={lr},
-    gs_num_steps={num_steps},
+    gs_num_steps={num_steps},{ipeps_extra}
 )
 
 # Run iPEPS optimization
 A_opt, env, E_gs = tenax.optimize_gs_ad(gate, A_init=None, config=config)
 print(f"Ground state energy per site: {{E_gs:.10f}}")
+''',
+    "ipeps_2site": '''\
+"""iPEPS 2-site AD optimization for the 2D {model_name} (antiferromagnets)."""
+
+import jax.numpy as jnp
+import tenax
+
+# Build 2-site Hamiltonian gate
+{gate_code}
+
+# 2-site iPEPS configuration (checkerboard unit cell)
+config = tenax.iPEPSConfig(
+    max_bond_dim={D},
+    ctm=tenax.CTMConfig(chi={chi}{ctm_extra}),
+    gs_optimizer="adam",
+    gs_learning_rate={lr},
+    gs_num_steps={num_steps},
+    unit_cell="2site",
+    su_init=True,
+    num_imaginary_steps=200,
+    dt=0.01,
+)
+
+# Run 2-site AD optimization
+(A_opt, B_opt), (env_A, env_B), E_gs = tenax.optimize_gs_ad(gate, None, config)
+print(f"Ground state energy per site: {{E_gs:.10f}}")
+''',
+    "ipeps_split": '''\
+"""iPEPS with Split-CTMRG for the 2D {model_name}."""
+
+import jax.numpy as jnp
+import tenax
+
+# Build 2-site Hamiltonian gate
+{gate_code}
+
+# AD optimization
+config = tenax.iPEPSConfig(
+    max_bond_dim={D},
+    ctm=tenax.CTMConfig(chi={chi}),
+    gs_optimizer="adam",
+    gs_learning_rate={lr},
+    gs_num_steps={num_steps},
+    su_init=True,
+    num_imaginary_steps=200,
+    dt=0.01,
+)
+A_opt, env, E_gs = tenax.optimize_gs_ad(gate, A_init=None, config=config)
+print(f"AD energy: {{E_gs:.10f}}")
+
+# Evaluate with Split-CTMRG (reduced cost: O(chi^3 D^3) vs O(chi^3 D^6))
+split_config = tenax.CTMConfig(chi={chi}, max_iter=100, chi_I={chi_I})
+split_env = tenax.ctm_split(A_opt, split_config)
+E_split = tenax.compute_energy_split_ctm(A_opt, split_env, gate, d={d})
+print(f"Split-CTM energy: {{E_split:.10f}}")
 ''',
     "contraction": '''\
 """Custom tensor network contraction."""
@@ -141,6 +196,11 @@ def generate_code(
     lr: float = 1e-3,
     max_iterations: int = 200,
     convergence_tol: float = 1e-8,
+    unit_cell: str = "1x1",
+    projector_method: str = "eigh",
+    qr_warmup_steps: int = 3,
+    chi_I: int | None = None,
+    su_init: bool = False,
 ) -> dict:
     """Generate runnable Tenax code from a high-level description."""
     algorithm = algorithm.lower()
@@ -172,7 +232,7 @@ def generate_code(
             max_iterations=max_iterations,
             convergence_tol=convergence_tol,
         )
-    elif algorithm == "ipeps":
+    elif algorithm in ("ipeps", "ipeps_2site", "ipeps_split"):
         gate_code = (
             "# Heisenberg gate: H = Jz*Sz⊗Sz + Jxy/2*(Sp⊗Sm + Sm⊗Sp)\n"
             "ops = tenax.spin_half_ops()\n"
@@ -182,18 +242,48 @@ def generate_code(
             f"        + {Jxy / 2} * (jnp.kron(Sp, Sm) + jnp.kron(Sm, Sp)))\n"
             "gate = gate.reshape(2, 2, 2, 2)"
         )
-        code = TEMPLATES["ipeps"].format(
+
+        # Build CTM extra config (QR projectors)
+        ctm_extra_parts = []
+        if projector_method == "qr":
+            ctm_extra_parts.append(f', projector_method="qr"')
+            ctm_extra_parts.append(f", qr_warmup_steps={qr_warmup_steps}")
+        ctm_extra = "".join(ctm_extra_parts)
+
+        # Build iPEPS extra config (su_init)
+        ipeps_extra = ""
+        if su_init and algorithm == "ipeps":
+            ipeps_extra = (
+                "\n    su_init=True,"
+                "\n    num_imaginary_steps=200,"
+                "\n    dt=0.01,"
+            )
+
+        # Select template based on algorithm variant
+        if algorithm == "ipeps_2site" or (algorithm == "ipeps" and unit_cell == "2site"):
+            template_key = "ipeps_2site"
+        elif algorithm == "ipeps_split":
+            template_key = "ipeps_split"
+        else:
+            template_key = "ipeps"
+
+        fmt_kwargs = dict(
             model_name="Heisenberg model",
             gate_code=gate_code,
             D=D,
             chi=chi,
             lr=lr,
             num_steps=num_steps,
+            ctm_extra=ctm_extra,
+            ipeps_extra=ipeps_extra,
+            d=d,
+            chi_I=chi_I if chi_I is not None else chi * D,
         )
+        code = TEMPLATES[template_key].format(**fmt_kwargs)
     else:
         return {
             "error": f"Unknown algorithm '{algorithm}'. "
-            "Supported: dmrg, trg, idmrg, ipeps."
+            "Supported: dmrg, trg, idmrg, ipeps, ipeps_2site, ipeps_split."
         }
 
     return {
