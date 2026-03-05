@@ -148,6 +148,38 @@ split_env = tenax.ctm_split(A_opt, split_config)
 E_split = tenax.compute_energy_split_ctm(A_opt, split_env, gate, d={d})
 print(f"Split-CTM energy: {{E_split:.10f}}")
 ''',
+    "split_ctm": '''\
+"""Split-CTM environment for a 2D iPEPS (Tensor protocol)."""
+
+import jax
+import jax.numpy as jnp
+import tenax
+
+# Build 2-site Hamiltonian gate
+{gate_code}
+
+# Build iPEPS site tensor as DenseTensor
+key = jax.random.PRNGKey(0)
+A_data = jax.random.normal(key, ({D}, {D}, {D}, {D}, {d}))
+
+sym = tenax.U1Symmetry()
+IN, OUT = tenax.FlowDirection.IN, tenax.FlowDirection.OUT
+indices = (
+    tenax.TensorIndex(sym, jnp.zeros({D}, dtype=jnp.int32), OUT, label="u"),
+    tenax.TensorIndex(sym, jnp.zeros({D}, dtype=jnp.int32), IN,  label="d"),
+    tenax.TensorIndex(sym, jnp.zeros({D}, dtype=jnp.int32), OUT, label="l"),
+    tenax.TensorIndex(sym, jnp.zeros({D}, dtype=jnp.int32), IN,  label="r"),
+    tenax.TensorIndex(sym, jnp.zeros({d}, dtype=jnp.int32), IN,  label="phys"),
+)
+A = tenax.DenseTensor(A_data, indices)
+
+# Run split-CTM (works with both DenseTensor and SymmetricTensor)
+env = tenax.ctm_split_tensor(A, chi={chi}, max_iter=100, conv_tol=1e-8)
+
+# Compute energy
+energy = tenax.compute_energy_split_ctm_tensor(A, env, gate, d={d})
+print(f"Energy per site: {{float(energy):.10f}}")
+''',
     "contraction": '''\
 """Custom tensor network contraction."""
 
@@ -280,10 +312,25 @@ def generate_code(
             chi_I=chi_I if chi_I is not None else chi * D,
         )
         code = TEMPLATES[template_key].format(**fmt_kwargs)
+    elif algorithm == "split_ctm":
+        gate_code = (
+            "# Heisenberg gate: H = Jz*Sz⊗Sz + Jxy/2*(Sp⊗Sm + Sm⊗Sp)\n"
+            "ops = tenax.spin_half_ops()\n"
+            "Sz, Sp, Sm = ops['Sz'], ops['Sp'], ops['Sm']\n"
+            f"gate = ({Jz} * jnp.kron(Sz, Sz)\n"
+            f"        + {Jxy / 2} * (jnp.kron(Sp, Sm) + jnp.kron(Sm, Sp)))\n"
+            "gate = gate.reshape(2, 2, 2, 2)"
+        )
+        code = TEMPLATES["split_ctm"].format(
+            gate_code=gate_code,
+            D=D,
+            d=d,
+            chi=chi,
+        )
     else:
         return {
             "error": f"Unknown algorithm '{algorithm}'. "
-            "Supported: dmrg, trg, idmrg, ipeps, ipeps_2site, ipeps_split."
+            "Supported: dmrg, trg, idmrg, ipeps, ipeps_2site, ipeps_split, split_ctm."
         }
 
     return {

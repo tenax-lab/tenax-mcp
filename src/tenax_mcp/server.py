@@ -197,7 +197,7 @@ def generate_code(
 
     Args:
         description: What the code should do (e.g., "Heisenberg chain DMRG").
-        algorithm: One of "dmrg", "trg", "idmrg", "ipeps", "ipeps_2site", "ipeps_split".
+        algorithm: One of "dmrg", "trg", "idmrg", "ipeps", "ipeps_2site", "ipeps_split", "split_ctm".
         L: Number of sites (for DMRG).
         d: Local Hilbert space dimension.
         max_bond_dim: Bond dimension.

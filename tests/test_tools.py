@@ -172,6 +172,14 @@ def test_generate_code_ipeps_su_init():
     assert "su_init=True" in result["code"]
 
 
+def test_generate_code_split_ctm():
+    result = generate_code("2D Heisenberg split CTM", algorithm="split_ctm", D=2, chi=10)
+    assert "code" in result
+    assert "ctm_split_tensor" in result["code"]
+    assert "compute_energy_split_ctm_tensor" in result["code"]
+    assert "DenseTensor" in result["code"]
+
+
 def test_generate_code_invalid():
     result = generate_code("something", algorithm="unknown")
     assert "error" in result
