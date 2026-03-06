@@ -169,6 +169,47 @@ def run_trg(
     )
 
 
+@mcp.tool()
+def run_hotrg(
+    model: str = "ising",
+    beta: float | None = None,
+    temperature: float | None = None,
+    J: float = 1.0,
+    max_bond_dim: int = 16,
+    num_steps: int = 10,
+    direction_order: str = "alternating",
+) -> dict:
+    """Run HOTRG (Higher-Order TRG) on a 2D classical model (currently: 2D Ising).
+
+    HOTRG uses higher-order SVD for more accurate coarse-graining than standard TRG.
+    Provide either beta (inverse temperature) or temperature.
+
+    Args:
+        model: Model type (currently only "ising").
+        beta: Inverse temperature (1/T). Provide this OR temperature.
+        temperature: Temperature T. Provide this OR beta.
+        J: Coupling constant (default 1.0).
+        max_bond_dim: Maximum HOTRG bond dimension (default 16).
+        num_steps: Number of coarse-graining steps (default 10).
+        direction_order: Coarse-graining direction order —
+            "alternating" (default), "horizontal", or "vertical".
+
+    Returns:
+        Free energy per site, exact solution, relative error, log(Z)/N.
+    """
+    from tenax_mcp.solvers import run_hotrg as _run_hotrg
+
+    return _run_hotrg(
+        model=model,
+        beta=beta,
+        temperature=temperature,
+        J=J,
+        max_bond_dim=max_bond_dim,
+        num_steps=num_steps,
+        direction_order=direction_order,
+    )
+
+
 # --- Code generation tools ---
 
 
@@ -192,18 +233,20 @@ def generate_code(
     qr_warmup_steps: int = 3,
     chi_I: int | None = None,
     su_init: bool = False,
+    direction_order: str = "alternating",
 ) -> dict:
     """Generate complete, runnable Tenax Python code from a high-level description.
 
     Args:
         description: What the code should do (e.g., "Heisenberg chain DMRG").
-        algorithm: One of "dmrg", "trg", "idmrg", "ipeps", "ipeps_2site", "ipeps_split", "split_ctm".
+        algorithm: One of "dmrg", "trg", "hotrg", "idmrg", "ipeps", "ipeps_2site",
+            "ipeps_split", "split_ctm", "ctm_tensor", "fpeps", "excitations".
         L: Number of sites (for DMRG).
         d: Local Hilbert space dimension.
         max_bond_dim: Bond dimension.
         num_sweeps: DMRG sweeps.
-        beta: Inverse temperature (for TRG).
-        num_steps: Coarse-graining steps (TRG) or optimization steps (iPEPS).
+        beta: Inverse temperature (for TRG/HOTRG).
+        num_steps: Coarse-graining steps (TRG/HOTRG) or optimization steps (iPEPS).
         Jz: Ising coupling.
         Jxy: XY coupling.
         hz: External field.
@@ -214,6 +257,7 @@ def generate_code(
         qr_warmup_steps: Number of eigh warm-up iterations before QR kicks in (default 3).
         chi_I: Interlayer bond dimension for split-CTMRG (None => chi * D).
         su_init: Initialize AD optimization with simple update (default False).
+        direction_order: HOTRG direction order — "alternating" (default), "horizontal", or "vertical".
 
     Returns:
         Complete Python code string ready to run.
@@ -240,6 +284,7 @@ def generate_code(
         qr_warmup_steps=qr_warmup_steps,
         chi_I=chi_I,
         su_init=su_init,
+        direction_order=direction_order,
     )
 
 
