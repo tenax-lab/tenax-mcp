@@ -150,12 +150,14 @@ def test_generate_code_ipeps_2site():
     assert "code" in result
     assert 'unit_cell="2site"' in result["code"]
     assert "A_opt, B_opt" in result["code"]
+    assert "gs_c4v=True" in result["code"]
 
 
 def test_generate_code_ipeps_unit_cell_2site():
     result = generate_code("2D Heisenberg AFM", algorithm="ipeps", unit_cell="2site")
     assert "code" in result
     assert 'unit_cell="2site"' in result["code"]
+    assert "gs_c4v=True" in result["code"]
 
 
 def test_generate_code_ipeps_split():

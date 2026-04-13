@@ -94,7 +94,15 @@ A_opt, env, E_gs = tenax.optimize_gs_ad(gate, A_init=None, config=config)
 print(f"Ground state energy per site: {{E_gs:.10f}}")
 ''',
     "ipeps_2site": '''\
-"""iPEPS 2-site AD optimization for the 2D {model_name} (antiferromagnets)."""
+"""iPEPS 2-site shared-tensor C4v AD for the 2D {model_name} (antiferromagnets).
+
+Uses the shared-tensor C4v path: a single C4v-parameterized tensor A is
+optimized and B is derived from A by sublattice rotation (spin-pi on the
+physical leg).  This is the stable 2-site AD path for spin-1/2 AFMs and
+avoids the drift that plagues the unconstrained 2-site optimizer.
+
+Spin-1/2 only (physical dimension d=2).
+"""
 
 import jax.numpy as jnp
 import tenax
@@ -102,20 +110,24 @@ import tenax
 # Build 2-site Hamiltonian gate
 {gate_code}
 
-# 2-site iPEPS configuration (checkerboard unit cell)
+# 2-site shared-tensor C4v iPEPS configuration (checkerboard unit cell)
 config = tenax.iPEPSConfig(
     max_bond_dim={D},
-    ctm=tenax.CTMConfig(chi={chi}{ctm_extra}),
-    gs_optimizer="adam",
-    gs_learning_rate={lr},
+    ctm=tenax.CTMConfig(chi={chi}, max_iter=100, min_iter=50{ctm_extra}),
+    gs_optimizer="lbfgs",
+    gs_explicit_ad=True,
+    gs_explicit_ad_steps=10,
+    gs_explicit_ad_warmup=2,
     gs_num_steps={num_steps},
+    gs_line_search=True,
     unit_cell="2site",
+    gs_c4v=True,
     su_init=True,
-    num_imaginary_steps=200,
-    dt=0.01,
+    num_imaginary_steps=100,
+    dt=0.3,
 )
 
-# Run 2-site AD optimization
+# Run 2-site shared-tensor C4v AD optimization
 (A_opt, B_opt), (env_A, env_B), E_gs = tenax.optimize_gs_ad(gate, None, config)
 print(f"Ground state energy per site: {{E_gs:.10f}}")
 ''',
