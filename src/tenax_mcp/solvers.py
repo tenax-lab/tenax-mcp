@@ -6,10 +6,12 @@ import jax.numpy as jnp
 
 from tenax import (
     DMRGConfig,
+    HOTRGConfig,
     TRGConfig,
     build_random_mps,
     compute_ising_tensor,
     dmrg,
+    hotrg,
     ising_free_energy_exact,
     trg,
 )
@@ -92,4 +94,48 @@ def run_trg(
         "temperature": 1.0 / beta,
         "max_bond_dim": max_bond_dim,
         "num_steps": num_steps,
+    }
+
+
+def run_hotrg(
+    model: str = "ising",
+    beta: float | None = None,
+    temperature: float | None = None,
+    J: float = 1.0,
+    max_bond_dim: int = 16,
+    num_steps: int = 10,
+    direction_order: str = "alternating",
+) -> dict:
+    """Run HOTRG on a 2D classical model and return results."""
+    if model != "ising":
+        return {"error": f"Unknown model '{model}'. Currently only 'ising' is supported."}
+
+    if beta is None and temperature is None:
+        return {"error": "Provide either 'beta' (inverse temperature) or 'temperature'."}
+    if beta is None:
+        beta = 1.0 / temperature
+
+    tensor = compute_ising_tensor(beta=beta, J=J)
+    config = HOTRGConfig(
+        max_bond_dim=max_bond_dim,
+        num_steps=num_steps,
+        direction_order=direction_order,
+    )
+
+    log_Z_per_site = hotrg(tensor, config)
+    free_energy = -float(log_Z_per_site) / beta
+
+    exact = ising_free_energy_exact(beta=beta, J=J)
+    rel_error = abs(free_energy - exact) / abs(exact) if exact != 0 else 0.0
+
+    return {
+        "free_energy_per_site": free_energy,
+        "exact_free_energy_per_site": exact,
+        "relative_error": rel_error,
+        "log_Z_per_site": float(log_Z_per_site),
+        "beta": beta,
+        "temperature": 1.0 / beta,
+        "max_bond_dim": max_bond_dim,
+        "num_steps": num_steps,
+        "direction_order": direction_order,
     }

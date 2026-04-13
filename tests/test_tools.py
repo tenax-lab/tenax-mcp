@@ -3,7 +3,7 @@
 import pytest
 
 from tenax_mcp.hamiltonian import build_hamiltonian, list_operators
-from tenax_mcp.solvers import run_dmrg, run_trg
+from tenax_mcp.solvers import run_dmrg, run_hotrg, run_trg
 from tenax_mcp.contraction import optimize_contraction, validate_network
 from tenax_mcp.codegen import generate_code, export_netfile
 
@@ -174,6 +174,45 @@ def test_generate_code_ipeps_su_init():
     assert "su_init=True" in result["code"]
 
 
+def test_generate_code_split_ctm():
+    result = generate_code("2D Heisenberg split CTM", algorithm="split_ctm", D=2, chi=10)
+    assert "code" in result
+    assert "ctm_split_tensor" in result["code"]
+    assert "compute_energy_split_ctm_tensor" in result["code"]
+    assert "DenseTensor" in result["code"]
+
+
+def test_generate_code_hotrg():
+    result = generate_code("2D Ising HOTRG", algorithm="hotrg", beta=0.44)
+    assert "code" in result
+    assert "hotrg" in result["code"].lower()
+    assert "HOTRGConfig" in result["code"]
+
+
+def test_generate_code_fpeps():
+    result = generate_code("Fermionic iPEPS", algorithm="fpeps", D=2, chi=8)
+    assert "code" in result
+    assert "FPEPSConfig" in result["code"]
+    assert "spinless_fermion_gate" in result["code"]
+    assert "fpeps" in result["code"]
+
+
+def test_generate_code_ctm_tensor():
+    result = generate_code("Standard CTM", algorithm="ctm_tensor", D=2, chi=10)
+    assert "code" in result
+    assert "ctm_tensor" in result["code"]
+    assert "compute_energy_ctm_tensor" in result["code"]
+    assert "DenseTensor" in result["code"]
+
+
+def test_generate_code_excitations():
+    result = generate_code("Excitation spectra", algorithm="excitations", D=2, chi=10)
+    assert "code" in result
+    assert "compute_excitations" in result["code"]
+    assert "ExcitationConfig" in result["code"]
+    assert "make_momentum_path" in result["code"]
+
+
 def test_generate_code_invalid():
     result = generate_code("something", algorithm="unknown")
     assert "error" in result
@@ -235,4 +274,18 @@ def test_run_trg_invalid_model():
 
 def test_run_trg_no_temperature():
     result = run_trg(model="ising")
+    assert "error" in result
+
+
+@pytest.mark.slow
+def test_run_hotrg_ising():
+    result = run_hotrg(model="ising", beta=0.3, max_bond_dim=16, num_steps=10)
+    assert "free_energy_per_site" in result
+    assert "exact_free_energy_per_site" in result
+    assert result["relative_error"] < 1e-2
+    assert result["direction_order"] == "alternating"
+
+
+def test_run_hotrg_invalid_model():
+    result = run_hotrg(model="potts")
     assert "error" in result
