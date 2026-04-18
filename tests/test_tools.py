@@ -145,6 +145,18 @@ def test_generate_code_ipeps_qr():
     assert "qr_warmup_steps" in result["code"]
 
 
+def test_generate_code_ipeps_chi_ramp():
+    result = generate_code(
+        "2D Heisenberg",
+        algorithm="ipeps",
+        chi=32,
+        chi_ramp=[[8, 10], [16, 10], [32, None]],
+    )
+    assert "code" in result
+    assert "chi_ramp=[(8, 10), (16, 10), (32, None)]" in result["code"]
+    assert "chi=32" in result["code"]
+
+
 def test_generate_code_ipeps_2site():
     result = generate_code("2D Heisenberg AFM", algorithm="ipeps_2site")
     assert "code" in result

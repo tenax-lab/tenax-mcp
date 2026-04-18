@@ -359,6 +359,7 @@ def generate_code(
     chi_I: int | None = None,
     su_init: bool = False,
     direction_order: str = "alternating",
+    chi_ramp: list[list[int | None]] | None = None,
 ) -> dict:
     """Generate runnable Tenax code from a high-level description."""
     algorithm = algorithm.lower()
@@ -401,11 +402,19 @@ def generate_code(
             "gate = gate.reshape(2, 2, 2, 2)"
         )
 
-        # Build CTM extra config (QR projectors)
+        # Build CTM extra config (QR projectors, chi_ramp)
         ctm_extra_parts = []
         if projector_method == "qr":
             ctm_extra_parts.append(f', projector_method="qr"')
             ctm_extra_parts.append(f", qr_warmup_steps={qr_warmup_steps}")
+        if chi_ramp is not None:
+            ramp_tuples = [
+                f"({c}, {s})" if s is not None else f"({c}, None)"
+                for c, s in chi_ramp
+            ]
+            ctm_extra_parts.append(
+                f", chi_ramp=[{', '.join(ramp_tuples)}]"
+            )
         ctm_extra = "".join(ctm_extra_parts)
 
         # Build iPEPS extra config (su_init)

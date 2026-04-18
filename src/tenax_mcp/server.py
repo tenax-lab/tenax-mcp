@@ -234,6 +234,7 @@ def generate_code(
     chi_I: int | None = None,
     su_init: bool = False,
     direction_order: str = "alternating",
+    chi_ramp: list[list[int | None]] | None = None,
 ) -> dict:
     """Generate complete, runnable Tenax Python code from a high-level description.
 
@@ -258,6 +259,9 @@ def generate_code(
         chi_I: Interlayer bond dimension for split-CTMRG (None => chi * D).
         su_init: Initialize AD optimization with simple update (default False).
         direction_order: HOTRG direction order — "alternating" (default), "horizontal", or "vertical".
+        chi_ramp: CTM chi ramp schedule — list of [chi, steps] pairs for gradual
+            chi increase. E.g., [[8, 10], [16, 10], [32, None]] ramps chi from 8
+            to 16 to 32, running 10 CTM steps at each intermediate stage.
 
     Returns:
         Complete Python code string ready to run.
@@ -285,6 +289,7 @@ def generate_code(
         chi_I=chi_I,
         su_init=su_init,
         direction_order=direction_order,
+        chi_ramp=chi_ramp,
     )
 
 
